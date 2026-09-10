@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy — Spendly{% endblock %}
+
+{% block content %}
+<div class="terms-container">
+    <div class="terms-inner">
+        <h1>Privacy Policy</h1>
+        <p class="terms-last-updated">Last Updated: September 10, 2026</p>
+
+        <section class="terms-section">
+            <h2>1. Data We Collect</h2>
+            <p>We collect information that you provide directly to us, including your name, email address, and the expense data you log (amounts, categories, and descriptions). We may also collect basic technical information such as your IP address and browser type to ensure the security and stability of our service.</p>
+        </section>
+
+        <section class="terms-section">
+            <h2>2. How We Use Your Data</h2>
+            <p>Your data is used exclusively to provide and improve the Spendly experience. This includes calculating your spending totals, generating category breakdowns, and managing your account. We do not use your personal financial data for marketing or advertising purposes.</p>
+        </section>
+
+        <section class="terms-section">
+            <h2>3. Data Storage</h2>
+            <p>We employ industry-standard security measures to store and protect your data. All account information is encrypted. You may request the deletion of your account and all associated data at any time by contacting us.</p>
+        </section>
+
+        <section class="terms-section">
+            <h2>4. Third Party Services</h2>
+            <p>Spendly does not share, sell, or rent your personal information to third parties. We may use trusted third-party hosting services to store our database, but these providers are contractually obligated to maintain the confidentiality and security of your data.</p>
+        </section>
+
+        <section class="terms-section">
+            <h2>5. Contact Us</h2>
+            <p>If you have any questions about this Privacy Policy or how your data is handled, please reach out to us at privacy@spendly.example.com.</p>
+        </section>
+
+        <div class="terms-footer">
+            <p>Your privacy is our priority.</p>
+            <a href="{{ url_for('landing') }}" class="btn-ghost">Return to Home</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .terms-container {
+        padding: 4rem 2rem;
+        max-width: 800px;
+        margin: 0 auto;
+        line-height: 1.6;
+        color: var(--text-main);
+    }
+    .terms-inner {
+        background: var(--bg-card);
+        padding: 3rem;
+        border-radius: 1rem;
+        box-shadow: var(--shadow-sm);
+    }
+    .terms-inner h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-strong);
+    }
+    .terms-last-updated {
+        color: var(--text-muted);
+        margin-bottom: 3rem;
+        font-style: italic;
+    }
+    .terms-section {
+        margin-bottom: 2.5rem;
+    }
+    .terms-section h2 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: var(--text-strong);
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5rem;
+    }
+    .terms-footer {
+        margin-top: 4rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border-color);
+        text-align: center;
+    }
+</style>
+{% endblock %}
