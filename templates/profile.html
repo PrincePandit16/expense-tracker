@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Sidebar: User Info -->
+    <aside class="profile-sidebar">
+        <div class="user-card">
+            <div class="user-avatar">
+                {{ user.name[0] }}{{ user.name.split(' ')[-1][0] | upper }}
+            </div>
+            <h2>{{ user.name }}</h2>
+            <p class="user-email">{{ user.email }}</p>
+            <span class="hero-badge">Member since {{ user.joined }}</span>
+        </div>
+
+        <div class="content-card">
+            <h3 class="card-title">
+                <i data-lucide="pie-chart"></i> Spending Mix
+            </h3>
+            <div class="cat-breakdown">
+                {% for cat in category_totals %}
+                <div class="cat-row">
+                    <div class="cat-info">
+                        <span class="cat-name">{{ cat.name }}</span>
+                        <span class="cat-val">{{ cat.amount }}</span>
+                    </div>
+                    <div class="cat-bar-container">
+                        <div class="cat-bar-fill" style="width: {{ cat.percentage }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="profile-main">
+        <!-- Summary Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i data-lucide="wallet"></i> Total Spent
+                </div>
+                <div class="stat-value">{{ stats.total_spent }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i data-lucide="activity"></i> Transactions
+                </div>
+                <div class="stat-value">{{ stats.tx_count }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i data-lucide="trending-up"></i> Top Category
+                </div>
+                <div class="stat-value">{{ stats.top_category }}</div>
+            </div>
+        </div>
+
+        <!-- Transaction Table -->
+        <div class="content-card">
+            <h3 class="card-title">
+                <i data-lucide="list"></i> Recent Transactions
+            </h3>
+            <div style="overflow-x: auto;">
+                <table class="tx-table">
+                    <thead>
+                        <tr>
+                            <th><i data-lucide="calendar" style="width:14px; height:14px;"></i> Date</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in transactions %}
+                        <tr>
+                            <td>{{ tx.date }}</td>
+                            <td>{{ tx.desc }}</td>
+                            <td><span class="cat-badge">{{ tx.cat }}</span></td>
+                            <td class="tx-amt">{{ tx.amt }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
