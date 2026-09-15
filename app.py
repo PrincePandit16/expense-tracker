@@ -1,6 +1,8 @@
-from flask import Flask, render_template, session, redirect, url_for, request, jsonify
+from flask import Flask, render_template, session, redirect, url_for, request, jsonify, flash
 from werkzeug.security import check_password_hash, generate_password_hash
+from datetime import datetime, timedelta
 from database.db import init_db, seed_db, get_db
+from database.queries import get_summary_stats, get_recent_transactions, get_category_breakdown
 
 app = Flask(__name__)
 app.secret_key = "spendly-secret-dev-key"
@@ -80,89 +82,6 @@ def privacy():
 
 
 # ------------------------------------------------------------------ #
-# API Routes for Profile                                                  #
-# ------------------------------------------------------------------ #
-
-@app.route("/api/profile/transactions")
-def api_transactions():
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    with get_db() as conn:
-        expenses = conn.execute(
-            "SELECT date, category, amount, description FROM expenses WHERE user_id = ? ORDER BY date DESC",
-            (user_id,)
-        ).fetchall()
-
-        transactions = [dict(tx) for tx in expenses]
-
-    return jsonify(transactions)
-
-
-@app.route("/api/profile/stats")
-def get_profile_stats():
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    with get_db() as conn:
-        # Fetch total spent and transaction count
-        stats_row = conn.execute(
-            "SELECT SUM(amount) as total, COUNT(*) as count FROM expenses WHERE user_id = ?",
-            (user_id,)
-        ).fetchone()
-
-        total_spent = stats_row["total"] if stats_row["total"] else 0
-        tx_count = stats_row["count"] if stats_row["count"] else 0
-
-        # Fetch top category
-        top_cat_row = conn.execute(
-            "SELECT category FROM expenses WHERE user_id = ? GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
-            (user_id,)
-        ).fetchone()
-        top_category = top_cat_row["category"] if top_cat_row else "None"
-
-        return jsonify({
-            "total_spent": total_spent,
-            "tx_count": tx_count,
-            "top_category": top_category
-        })
-
-
-@app.route("/api/profile/categories")
-def api_profile_categories():
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    with get_db() as conn:
-        # Fetch total spent for percentage calculation
-        total_row = conn.execute(
-            "SELECT SUM(amount) as total FROM expenses WHERE user_id = ?",
-            (user_id,)
-        ).fetchone()
-        total_spent = total_row["total"] if total_row["total"] else 0
-
-        # Fetch category-wise spending
-        cat_rows = conn.execute(
-            "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category",
-            (user_id,)
-        ).fetchall()
-
-        category_totals = []
-        for row in cat_rows:
-            percentage = (row["total"] / total_spent * 100) if total_spent > 0 else 0
-            category_totals.append({
-                "name": row["category"],
-                "amount": row["total"],
-                "percentage": round(percentage)
-            })
-
-    return jsonify(category_totals)
-
-
-# ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
 
@@ -178,23 +97,60 @@ def profile():
     if not user_id:
         return redirect(url_for("login"))
 
-    with get_db() as conn:
-        # Fetch actual user data
-        user_row = conn.execute("SELECT name, email, created_at FROM users WHERE id = ?", (user_id,)).fetchone()
-        if not user_row:
-            return redirect(url_for("login"))
+    # 1. Date filter handling
+    date_from = request.args.get("date_from")
+    date_to = request.args.get("date_to")
+    valid_filter = False
 
-        user = {
-            "name": user_row["name"],
-            "email": user_row["email"],
-            "joined": user_row["created_at"][:10] # Simplified date
+    if date_from and date_to:
+        try:
+            # Validate ISO date format
+            datetime.strptime(date_from, "%Y-%m-%d")
+            datetime.strptime(date_to, "%Y-%m-%d")
+
+            if date_from > date_to:
+                flash("Start date must be before end date.")
+                date_from, date_to = None, None
+            else:
+                valid_filter = True
+        except ValueError:
+            # Silently fallback to all time if date is malformed
+            date_from, date_to = None, None
+
+    # 2. Fetch data using centralized query helpers
+    stats = get_summary_stats(user_id, date_from, date_to)
+    transactions = get_recent_transactions(user_id, date_from=date_from, date_to=date_to)
+    category_totals = get_category_breakdown(user_id, date_from, date_to)
+
+    # 3. Compute Preset dates for the template buttons
+    today = datetime.now()
+
+    # This Month: First day of current month to today
+    this_month_start = today.replace(day=1).strftime("%Y-%m-%d")
+    this_month_end = today.strftime("%Y-%m-%d")
+
+    # Last 3 Months: Today - 90 days to today
+    three_month_start = (today - timedelta(days=90)).strftime("%Y-%m-%d")
+    three_month_end = today.strftime("%Y-%m-%d")
+
+    # Last 6 Months: Today - 180 days to today
+    six_month_start = (today - timedelta(days=180)).strftime("%Y-%m-%d")
+    six_month_end = today.strftime("%Y-%m-%d")
+
+    return render_template(
+        "profile.html",
+        user_id=user_id,
+        stats=stats,
+        transactions=transactions,
+        category_totals=category_totals,
+        date_from=date_from,
+        date_to=date_to,
+        presets={
+            "this_month": (this_month_start, this_month_end),
+            "last_3": (three_month_start, three_month_end),
+            "last_6": (six_month_start, six_month_end)
         }
-
-    return render_template("profile.html",
-                               user=user,
-                               stats={"total_spent": "₹0.00", "tx_count": 0, "top_category": "None"},
-                               transactions=[],
-                               category_totals=[])
+    )
 
 
 @app.route("/expenses/add")

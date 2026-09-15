@@ -10,11 +10,11 @@
     <aside class="profile-sidebar">
         <div class="user-card">
             <div class="user-avatar">
-                {{ user.name[0] }}{{ user.name.split(' ')[-1][0] | upper }}
+                {{ session.user_name[0] if session.user_name else 'U' }}{{ session.user_name.split(' ')[-1][0] | upper if session.user_name else 'S' }}
             </div>
-            <h2>{{ user.name }}</h2>
-            <p class="user-email">{{ user.email }}</p>
-            <span class="hero-badge">Member since {{ user.joined }}</span>
+            <h2>{{ session.user_name }}</h2>
+            <p class="user-email">Welcome back!</p>
+            <span class="hero-badge">Member</span>
         </div>
 
         <div class="content-card">
@@ -22,42 +22,75 @@
                 <i data-lucide="pie-chart"></i> Spending Mix
             </h3>
             <div class="cat-breakdown" id="category-breakdown">
-                {% for cat in category_totals %}
-                <div class="cat-row">
-                    <div class="cat-info">
-                        <span class="cat-name">{{ cat.name }}</span>
-                        <span class="cat-val">{{ cat.amount }}</span>
+                {% if category_totals %}
+                    {% for cat in category_totals %}
+                    <div class="cat-row">
+                        <div class="cat-info">
+                            <span class="cat-name">{{ cat.category }}</span>
+                            <span class="cat-val">₹{{ "%.2f"|format(cat.amount) }}</span>
+                        </div>
+                        <div class="cat-bar-container">
+                            <div class="cat-bar-fill" style="width: {{ cat.percentage }}%"></div>
+                        </div>
                     </div>
-                    <div class="cat-bar-container">
-                        <div class="cat-bar-fill" style="width: {{ cat.percentage }}%"></div>
-                    </div>
-                </div>
-                {% endfor %}
+                    {% endfor %}
+                {% else %}
+                    <p class="empty-msg">No category data for this period</p>
+                {% endif %}
             </div>
         </div>
     </aside>
 
     <!-- Main Content -->
     <main class="profile-main">
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div class="filter-presets">
+                <a href="{{ url_for('profile') }}"
+                   class="preset-btn {{ 'active' if not date_from and not date_to }}">All Time</a>
+
+                <a href="{{ url_for('profile', date_from=presets.this_month[0], date_to=presets.this_month[1]) }}"
+                   class="preset-btn {{ 'active' if date_from == presets.this_month[0] }}">This Month</a>
+
+                <a href="{{ url_for('profile', date_from=presets.last_3[0], date_to=presets.last_3[1]) }}"
+                   class="preset-btn {{ 'active' if date_from == presets.last_3[0] }}">Last 3 Months</a>
+
+                <a href="{{ url_for('profile', date_from=presets.last_6[0], date_to=presets.last_6[1]) }}"
+                   class="preset-btn {{ 'active' if date_from == presets.last_6[0] }}">Last 6 Months</a>
+            </div>
+
+            <form action="{{ url_for('profile') }}" method="GET" class="custom-filter">
+                <div class="filter-input-group">
+                    <label>From</label>
+                    <input type="date" name="date_from" value="{{ date_from or '' }}">
+                </div}
+                <div class="filter-input-group">
+                    <label>To</label>
+                    <input type="date" name="date_to" value="{{ date_to or '' }}">
+                </div}
+                <button type="submit" class="btn-apply">Apply</button>
+            </form>
+        </div>
+
         <!-- Summary Stats -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">
                     <i data-lucide="wallet"></i> Total Spent
                 </div>
-                <div class="stat-value" id="total-spent">₹0.00</div>
+                <div class="stat-value">₹{{ "%.2f"|format(stats.total_spent) }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">
                     <i data-lucide="activity"></i> Transactions
                 </div>
-                <div class="stat-value" id="tx-count">0</div>
+                <div class="stat-value">{{ stats.tx_count }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">
                     <i data-lucide="trending-up"></i> Top Category
                 </div>
-                <div class="stat-value" id="top-category">None</div>
+                <div class="stat-value">{{ stats.top_category }}</div>
             </div>
         </div>
 
@@ -76,13 +109,17 @@
                             <th style="text-align: right;">Amount</th>
                         </tr>
                     </thead>
-                    <tbody id="tx-body">
+                    <tbody>
                         {% for tx in transactions %}
                         <tr>
                             <td>{{ tx.date }}</td>
-                            <td>{{ tx.desc }}</td>
-                            <td><span class="cat-badge">{{ tx.cat }}</span></td>
-                            <td class="tx-amt">{{ tx.amt }}</td>
+                            <td>{{ tx.description }}</td>
+                            <td><span class="cat-badge">{{ tx.category }}</span></td>
+                            <td class="tx-amt">₹{{ "%.2f"|format(tx.amount) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align:center;">No transactions found for this period</td>
                         </tr>
                         {% endfor %}
                     </tbody>
