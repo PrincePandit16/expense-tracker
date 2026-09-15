@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, redirect, url_for, request
+from flask import Flask, render_template, session, redirect, url_for, request, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
 from database.db import init_db, seed_db, get_db
 
@@ -80,6 +80,89 @@ def privacy():
 
 
 # ------------------------------------------------------------------ #
+# API Routes for Profile                                                  #
+# ------------------------------------------------------------------ #
+
+@app.route("/api/profile/transactions")
+def api_transactions():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    with get_db() as conn:
+        expenses = conn.execute(
+            "SELECT date, category, amount, description FROM expenses WHERE user_id = ? ORDER BY date DESC",
+            (user_id,)
+        ).fetchall()
+
+        transactions = [dict(tx) for tx in expenses]
+
+    return jsonify(transactions)
+
+
+@app.route("/api/profile/stats")
+def get_profile_stats():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    with get_db() as conn:
+        # Fetch total spent and transaction count
+        stats_row = conn.execute(
+            "SELECT SUM(amount) as total, COUNT(*) as count FROM expenses WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()
+
+        total_spent = stats_row["total"] if stats_row["total"] else 0
+        tx_count = stats_row["count"] if stats_row["count"] else 0
+
+        # Fetch top category
+        top_cat_row = conn.execute(
+            "SELECT category FROM expenses WHERE user_id = ? GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
+            (user_id,)
+        ).fetchone()
+        top_category = top_cat_row["category"] if top_cat_row else "None"
+
+        return jsonify({
+            "total_spent": total_spent,
+            "tx_count": tx_count,
+            "top_category": top_category
+        })
+
+
+@app.route("/api/profile/categories")
+def api_profile_categories():
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    with get_db() as conn:
+        # Fetch total spent for percentage calculation
+        total_row = conn.execute(
+            "SELECT SUM(amount) as total FROM expenses WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()
+        total_spent = total_row["total"] if total_row["total"] else 0
+
+        # Fetch category-wise spending
+        cat_rows = conn.execute(
+            "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category",
+            (user_id,)
+        ).fetchall()
+
+        category_totals = []
+        for row in cat_rows:
+            percentage = (row["total"] / total_spent * 100) if total_spent > 0 else 0
+            category_totals.append({
+                "name": row["category"],
+                "amount": row["total"],
+                "percentage": round(percentage)
+            })
+
+    return jsonify(category_totals)
+
+
+# ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
 
@@ -107,51 +190,11 @@ def profile():
             "joined": user_row["created_at"][:10] # Simplified date
         }
 
-        # Fetch actual expenses
-        expenses = conn.execute(
-            "SELECT date, category, amount, description FROM expenses WHERE user_id = ? ORDER BY date DESC",
-            (user_id,)
-        ).fetchall()
-
-        # Process transactions for the template
-        transactions = [
-            {"date": tx["date"], "desc": tx["description"], "cat": tx["category"], "amt": f"₹{tx['amount']:.2f}"}
-            for tx in expenses
-        ]
-
-        # Calculate Summary Stats
-        total_spent = sum(tx["amount"] for tx in expenses)
-        tx_count = len(expenses)
-
-        # Find top category
-        top_cat_row = conn.execute(
-            "SELECT category FROM expenses WHERE user_id = ? GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
-            (user_id,)
-        ).fetchone()
-        top_category = top_cat_row["category"] if top_cat_row else "None"
-
-        stats = {
-            "total_spent": f"₹{total_spent:.2f}",
-            "tx_count": tx_count,
-            "top_category": top_category
-        }
-
-        # Calculate Category Breakdown
-        cat_rows = conn.execute(
-            "SELECT category, SUM(amount) as total FROM expenses WHERE user_id = ? GROUP BY category",
-            (user_id,)
-        ).fetchall()
-
-        category_totals = []
-        for row in cat_rows:
-            percentage = (row["total"] / total_spent * 100) if total_spent > 0 else 0
-            category_totals.append({
-                "name": row["category"],
-                "amount": f"₹{row['total']:.2f}",
-                "percentage": round(percentage)
-            })
-
-    return render_template("profile.html", user=user, stats=stats, transactions=transactions, category_totals=category_totals)
+    return render_template("profile.html",
+                               user=user,
+                               stats={"total_spent": "₹0.00", "tx_count": 0, "top_category": "None"},
+                               transactions=[],
+                               category_totals=[])
 
 
 @app.route("/expenses/add")
