@@ -21,7 +21,7 @@
             <h3 class="card-title">
                 <i data-lucide="pie-chart"></i> Spending Mix
             </h3>
-            <div class="cat-breakdown">
+            <div class="cat-breakdown" id="category-breakdown">
                 {% for cat in category_totals %}
                 <div class="cat-row">
                     <div class="cat-info">
@@ -45,19 +45,19 @@
                 <div class="stat-label">
                     <i data-lucide="wallet"></i> Total Spent
                 </div>
-                <div class="stat-value">{{ stats.total_spent }}</div>
+                <div class="stat-value" id="total-spent">₹0.00</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">
                     <i data-lucide="activity"></i> Transactions
                 </div>
-                <div class="stat-value">{{ stats.tx_count }}</div>
+                <div class="stat-value" id="tx-count">0</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">
                     <i data-lucide="trending-up"></i> Top Category
                 </div>
-                <div class="stat-value">{{ stats.top_category }}</div>
+                <div class="stat-value" id="top-category">None</div>
             </div>
         </div>
 
@@ -76,7 +76,7 @@
                             <th style="text-align: right;">Amount</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="tx-body">
                         {% for tx in transactions %}
                         <tr>
                             <td>{{ tx.date }}</td>
