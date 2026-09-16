@@ -1,11 +1,14 @@
 from flask import Flask, render_template, session, redirect, url_for, request, jsonify, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, timedelta
-from database.db import init_db, seed_db, get_db
+from database.db import init_db, seed_db, get_db, close_db
 from database.queries import get_summary_stats, get_recent_transactions, get_category_breakdown
 
 app = Flask(__name__)
 app.secret_key = "spendly-secret-dev-key"
+app.config['DATABASE'] = 'spendly.db'
+
+app.teardown_appcontext(close_db)
 
 
 # ------------------------------------------------------------------ #

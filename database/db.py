@@ -1,16 +1,26 @@
 import sqlite3
+from flask import current_app, g
 from werkzeug.security import generate_password_hash
-
-DB_PATH = "spendly.db"
 
 def get_db():
     """
     Opens a connection to the SQLite database and configures it.
+    Returns a connection from flask.g if it already exists for the current request.
     """
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    if 'db' not in g:
+        db_path = current_app.config.get('DATABASE', 'spendly.db')
+        g.db = sqlite3.connect(db_path)
+        g.db.row_factory = sqlite3.Row
+        g.db.execute("PRAGMA foreign_keys = ON")
+    return g.db
+
+def close_db(e=None):
+    """
+    Closes the database connection at the end of the request.
+    """
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 def init_db():
     """
